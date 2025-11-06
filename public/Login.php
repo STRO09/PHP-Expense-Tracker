@@ -1,44 +1,34 @@
 <?php
-
+session_start();
 require '../config/db.php';
-
-// Initialize messages
 $error = '';
 $success = '';
-
 if ($_SERVER['REQUEST_METHOD'] === "POST") {
-
-    // Get form inputs
     $email = trim($_POST['email']);
+    $password = $_POST['pass'];
 
     try {
-        // Check if email already exists
-        $check = $pdo->prepare("SELECT password FROM main.user WHERE email = :email");
+        $check = $pdo->prepare('SELECT password FROM main.user WHERE email = :email');
         $check->execute(array(':email' => $email));
 
         if ($check->rowCount() <= 0) {
             $error = "Email not registered!";
         } else {
             $row = $check->fetch(PDO::FETCH_ASSOC);
-            $hash = $row["password"];
-            // Hash password (works fine in PHP 5.6+)
-            if (password_verify($_POST['pass'], $hash)) {
-                $success = "Login successful! You can now log in.";
-                session_start();
-                $_SESSION["email"] = $_POST["email"];
-                sleep(1);
+            if (password_verify($password, $row['password'])) {
+                $_SESSION['email'] = $email;
                 header("Location:index.php");
+                exit;
             } else {
-                $error = 'Invalid Password.';
+                $error = 'Invalid password.';
             }
-
-
         }
     } catch (Exception $e) {
         $error = "Error: " . $e->getMessage();
     }
 }
 ?>
+
 
 <!doctype html>
 <html lang="en">

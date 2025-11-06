@@ -39,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
 
                 sleep(1);
                 header("Location:Login.php");
+                exit;
 
             }
         } catch (Exception $e) {
