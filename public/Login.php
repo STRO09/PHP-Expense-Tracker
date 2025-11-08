@@ -5,7 +5,6 @@ $error = '';
 $success = '';
 if ($_SERVER['REQUEST_METHOD'] === "POST") {
     $email = trim($_POST['email']);
-    $password = $_POST['pass'];
 
     try {
         $check = $pdo->prepare('SELECT password FROM main.user WHERE email = :email');
@@ -15,10 +14,10 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
             $error = "Email not registered!";
         } else {
             $row = $check->fetch(PDO::FETCH_ASSOC);
-            if (password_verify($password, $row['password'])) {
+            if (password_verify($_POST['pass'], $row['password'])) {
                 $_SESSION['email'] = $email;
-                header("Location:index.php");
-                exit;
+                header("Location: index.php");
+                exit();
             } else {
                 $error = 'Invalid password.';
             }
@@ -48,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
 
     <main>
         <div class="container mt-2 ml-5 p-5">
-            <form action="" method="POST">
+            <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']) ?>" method="POST">
                 <?php if ($error != '') { ?>
                     <div class="alert alert-danger"><?php echo $error; ?></div>
                 <?php } elseif ($success != '') { ?>
@@ -58,12 +57,12 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
                     Login Form
                 </h2>
                 <div class="form-floating mb-3">
-                    <input type="text" class="form-control" name="email" id="formId1" placeholder="" />
+                    <input type="text" class="form-control" name="email" id="formId1" placeholder="" required />
                     <label for="formId1">Email</label>
                 </div>
 
                 <div class="form-floating mb-3">
-                    <input type="password" class="form-control" name="pass" id="formId1" placeholder="" />
+                    <input type="password" class="form-control" name="pass" id="formId1" placeholder="" required />
                     <label for="formId1"> Password
                     </label>
                 </div>
@@ -72,6 +71,10 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
                     Login
                 </button>
             </form>
+
+            <br>
+            <span class="mt-4 pt-5">Account Not Created? <a
+                    href="/Expense-Tracker/public/Register.php">Register</a></span>
         </div>
 
     </main>

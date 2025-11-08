@@ -1,5 +1,5 @@
     <footer>
-        <p class="text-center"> &copy; All copyrights reserved to saagar</p>
+        <p class="text-center"> &copy; All copyrights reserved to Sagar</p>
     </footer>
     
     <!-- Bootstrap JavaScript Libraries -->

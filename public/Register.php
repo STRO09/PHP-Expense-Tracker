@@ -38,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
                 $success = "Registration successful! You can now log in.";
 
                 sleep(1);
-                header("Location:Login.php");
-                exit;
+                header("Location:login.php");
+                exit();
 
             }
         } catch (Exception $e) {
@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
 
     <main>
         <div class="container mt-2 ml-5 p-5">
-            <form action="" method="POST">
+            <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="POST">
                 <?php if ($error != '') { ?>
                     <div class="alert alert-danger"><?php echo $error; ?></div>
                 <?php } elseif ($success != '') { ?>
@@ -101,6 +101,11 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
                     Register
                 </button>
             </form>
+            <br>
+            <span class="mt-4 pt-5">Account Created Already? <a
+                    href="/Expense-Tracker/public/login.php">Login</a></span>
+
+
         </div>
     </main>
 
