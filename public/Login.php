@@ -7,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
     $email = trim($_POST['email']);
 
     try {
-        $check = $pdo->prepare('SELECT password FROM main.user WHERE email = :email');
+        $check = $pdo->prepare('SELECT id, password FROM main.user WHERE email = :email');
         $check->execute(array(':email' => $email));
 
         if ($check->rowCount() <= 0) {
@@ -16,6 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
             $row = $check->fetch(PDO::FETCH_ASSOC);
             if (password_verify($_POST['pass'], $row['password'])) {
                 $_SESSION['email'] = $email;
+                $_SESSION['user_id'] = $row['id'];
+
                 header("Location: index.php");
                 exit();
             } else {

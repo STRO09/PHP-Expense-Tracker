@@ -18,8 +18,9 @@
     <a class="navbar-brand" href="index.php">Expense Tracker</a>
     <div class="collapse navbar-collapse">
       <ul class="navbar-nav ms-auto">
-        <li class="nav-item"><a href="view_expenses.php" class="nav-link">Expenses</a></li>
-        <li class="nav-item"><a href="add_expense.php" class="nav-link">Add Expense</a></li>
+         <?php $current = basename($_SERVER['PHP_SELF']); ?>
+        <li class="nav-item"><a href="index.php" class="nav-link <?php echo ($current==='index.php') ? "active":"" ?>">Expenses</a></li>
+        <li class="nav-item"><a href="categories.php" class="nav-link <?php echo ($current ==='categories.php') ? "active":"" ?>">Categories</a></li>
         <li class="nav-item"><a href="logout.php" class="nav-link text-danger">Logout</a></li>
       </ul>
     </div>
