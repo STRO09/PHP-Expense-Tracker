@@ -1,8 +1,11 @@
 <?php
-require_once '../config/db.php';
+require '../config/db.php';
 include '../includes/header.php';
-session_start();
 
+// Session handling
+session_start();
+if (!isset($_SESSION['user_id']))
+    header("Location: login.php");
 $user_id = $_SESSION['user_id'];
 
 
@@ -59,6 +62,166 @@ $categories = $cat_stmt->fetchAll(PDO::FETCH_ASSOC);
 <div class="container py-4">
     <h2 class="mb-4 text-center">Expense Manager</h2>
 
+    <!-- Graph and Summary data -->
+    <div class="row mb-4">
+        <?php
+        $period = $_GET['period'] ?? 'month';
+        $periods = ['day', 'week', 'month', 'year'];
+
+        $user_id = $_SESSION['user_id'];
+
+        // Determine date range
+        switch ($period) {
+            case 'day':
+                $start_date = date('Y-m-d 00:00:00');
+                $end_date = date('Y-m-d 23:59:59');
+                $label = "Today";
+                break;
+            case 'week':
+                $start_date = date('Y-m-d 00:00:00', strtotime('monday this week'));
+                $end_date = date('Y-m-d 23:59:59', strtotime('sunday this week'));
+                $label = "This Week";
+                break;
+            case 'year':
+                $start_date = date('Y-01-01 00:00:00');
+                $end_date = date('Y-12-31 23:59:59');
+                $label = "This Year";
+                break;
+            case 'month':
+            default:
+                $start_date = date('Y-m-01 00:00:00');
+                $end_date = date('Y-m-t 23:59:59');
+                $label = "This Month";
+                break;
+        }
+
+        // ====== TOTALS ======
+        $queries = [
+            'today' => "SELECT COALESCE(SUM(amount), 0) FROM main.expense WHERE user_id=? AND DATE(date)=CURRENT_DATE",
+            'week' => "SELECT COALESCE(SUM(amount), 0) FROM main.expense WHERE user_id=? AND DATE_PART('week', date)=DATE_PART('week', CURRENT_DATE) AND DATE_PART('year', date)=DATE_PART('year', CURRENT_DATE)",
+            'month' => "SELECT COALESCE(SUM(amount), 0) FROM main.expense WHERE user_id=? AND DATE_PART('month', date)=DATE_PART('month', CURRENT_DATE) AND DATE_PART('year', date)=DATE_PART('year', CURRENT_DATE)",
+            'year' => "SELECT COALESCE(SUM(amount), 0) FROM main.expense WHERE user_id=? AND DATE_PART('year', date)=DATE_PART('year', CURRENT_DATE)"
+        ];
+
+        $totals = [];
+        foreach ($queries as $key => $sql) {
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$user_id]);
+            $totals[$key] = (float) $stmt->fetchColumn();
+        }
+
+        if ($period === 'week') {
+            // daily chart
+            $chart_sql = "
+SELECT TO_CHAR(date, 'Dy') AS label, SUM(amount) AS total
+FROM main.expense
+WHERE user_id=? AND date BETWEEN ? AND ?
+GROUP BY TO_CHAR(date, 'Dy')
+ORDER BY MIN(date);
+";
+        } elseif ($period === 'month') {
+            // date chart
+            $chart_sql = "
+            SELECT TO_CHAR(date, 'DD') AS label, SUM(amount) AS total
+FROM main.expense
+WHERE user_id=? AND date BETWEEN ? AND ?
+GROUP BY TO_CHAR(date, 'DD')
+ORDER BY TO_CHAR(date, 'DD')::int;
+";
+        } else {
+            // monthly chart
+            $chart_sql = "
+            SELECT TO_CHAR(date, 'Mon') AS label, SUM(amount) AS total
+FROM main.expense
+WHERE user_id=? AND date BETWEEN ? AND ?
+GROUP BY TO_CHAR(date, 'Mon')
+ORDER BY MIN(date);
+";
+        }
+
+        $stmt = $pdo->prepare($chart_sql);
+        $stmt->execute([$user_id, $start_date, $end_date]);
+        $chart_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $labels = array_column($chart_data, 'label');
+        $values = array_map('floatval', array_column($chart_data, 'total'));
+        ?>
+
+        <!-- Graph -->
+        <div class="col-md-8">
+            <div class="card shadow-sm border rounded-3 p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">Expense Trends (<?= $label ?>)</h5>
+                    <div>
+                        <?php
+                        $currIndex = array_search($period, $periods);
+                        $prevPeriod = $periods[max(0, $currIndex - 1)];
+                        $nextPeriod = $periods[min(count($periods) - 1, $currIndex + 1)];
+                        ?>
+                        <a href="?period=<?= $prevPeriod ?>" class="btn btn-sm btn-outline-secondary">&lt;</a>
+                        <a href="?period=<?= $nextPeriod ?>" class="btn btn-sm btn-outline-secondary">&gt;</a>
+                    </div>
+                </div>
+                <canvas id="expensesChart" height="100"></canvas>
+            </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="col-md-4">
+            <div class="card shadow-sm border rounded-3 p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">Summary</h5>
+                    <div>
+                        <a href="?period=<?= $prevPeriod ?>" class="btn btn-sm btn-outline-secondary">&lt;</a>
+                        <a href="?period=<?= $nextPeriod ?>" class="btn btn-sm btn-outline-secondary">&gt;</a>
+                    </div>
+                </div>
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Today
+                        <span class="badge bg-primary">₹<?= number_format($totals['today'], 2) ?></span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        This Week
+                        <span class="badge bg-success">₹<?= number_format($totals['week'], 2) ?></span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        This Month
+                        <span class="badge bg-warning text-dark">₹<?= number_format($totals['month'], 2) ?></span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        This Year
+                        <span class="badge bg-info text-dark">₹<?= number_format($totals['year'], 2) ?></span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const ctx = document.getElementById('expensesChart').getContext('2d');
+        const expensesChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: <?= json_encode($labels) ?>,
+                datasets: [{
+                    label: 'Expenses (₹)',
+                    data: <?= json_encode($values) ?>,
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    </script>
+
+
+
     <!-- Add / Edit Form -->
     <div class="card mb-4">
         <div class="card-header bg-dark text-light">
@@ -111,6 +274,7 @@ $categories = $cat_stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
+    <!-- Compute start and end for queries based on filters for table based view -->
     <?php
     // Mode (day/week/month/year)
     $mode = $_GET['mode'] ?? 'day';
@@ -283,5 +447,8 @@ $categories = $cat_stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 </div>
+
+
+
 
 <?php include '../includes/footer.php'; ?>
